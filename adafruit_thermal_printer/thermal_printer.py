@@ -118,6 +118,11 @@ class ThermalPrinter:
     CODE93 = 72
     CODE128 = 73
 
+    DECODE_BELOW = 2
+    DECODE_NONE = 0
+    DECODE_ABOVE = 1
+    DECODE_ABOVE_BELOW = 3
+
     class _PrintModeBit:
         # Internal descriptor class to simplify printer mode change properties.
         # This is tightly coupled to the ThermalPrinter implementation--do not
@@ -245,7 +250,7 @@ class ThermalPrinter:
 
     def send_command(self, command):
         """Send a command string to the printer."""
-        self._uart.write(bytes(command, "ascii"))
+        self._uart.write(bytes(command, "utf-8"))
 
     # Do initialization in warm_up instead of the initializer because this
     # initialization takes a long time (5 seconds) and shouldn't happen during
@@ -314,7 +319,7 @@ class ThermalPrinter:
         if end is not None:
             self._write_char(end)
 
-    def print_barcode(self, text, barcode_type):
+    def print_barcode(self, text, barcode_type, barcode_width=3, decode="self.DECODE_BELOW"):
         """Print a barcode with the specified text/number (the meaning
         varies based on the type of barcode) and type.  Type is a value from
         the datasheet or class-level variables like UPC_A, etc. for
@@ -323,9 +328,14 @@ class ThermalPrinter:
         """
         assert 0 <= barcode_type <= 255
         assert 0 <= len(text) <= 255
-        self.feed(1)  # Recent firmware can't print barcode w/o feed first???
-        self.send_command("\x1DH\x02")  # Print label below barcode
-        self.send_command("\x1Dw\x03")  # Barcode width 3 (0.375/1.0mm thin/thick)
+        assert 2 <= barcode_width <= 6
+        if str(self.__class__) != "<class 'adafruit_thermal_printer.thermal_printer_2168.ThermalPrinter'>":
+            self.feed(1)  # Recent firmware can't print barcode w/o feed first???
+            #firmware 2.168 handles printing barcodes without feed first ok
+
+        self.send_command("\x1DH{0}".format(chr(decode)))  # Print label below barcode
+
+        self.send_command("\x1Dw{0}".format(chr(barcode_width)))  # Barcode width 3 (0.375/1.0mm thin/thick)
         self.send_command("\x1Dk{0}".format(chr(barcode_type)))  # Barcode type
         # Write length and then string (note this only works with 2.64+).
         self.send_command(chr(len(text)))
@@ -363,7 +373,7 @@ class ThermalPrinter:
                     # Drop down to low level UART access to avoid newline and
                     # other bitmap values being misinterpreted.
                     self._wait_timeout()
-                    self._uart.write(chr(data[i]))
+                    self._uart.write((data[i]))
                     i += 1
                 i += row_bytes - row_bytes_clipped
             self._set_timeout(chunk_height * self._dot_print_s)

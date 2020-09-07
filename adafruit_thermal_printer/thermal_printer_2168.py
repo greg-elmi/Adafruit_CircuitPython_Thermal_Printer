@@ -92,3 +92,6 @@ class ThermalPrinter(thermal_printer.ThermalPrinter):
         """
         self._set_timeout(0.5)  # Half second delay for printer to initialize.
         self.reset()
+    def print_bitmap(self):
+        pass
+
