@@ -92,6 +92,24 @@ class ThermalPrinter(thermal_printer.ThermalPrinter):
         """
         self._set_timeout(0.5)  # Half second delay for printer to initialize.
         self.reset()
-    def print_bitmap(self):
-        pass
+    def print_bitmap(self, x, y, data):
+        #x = b"\x50"
+        #y = b"\x04"
+        self._uart.write(b"\x1D*%s%s" % (x, y))
 
+        for _ in range(int.from_bytes(y, byteorder='big')):
+            for _ in range(int.from_bytes(x, byteorder='big')):
+                for _ in range(8):
+                    self._uart.write(data)
+
+        self.print("\x1D/\x00\x10")
+
+    def fill_vertical(self, m, nH, nL, d):
+        self._uart.write(b"\x1B*%s%s%s" % (nH, nL, d))
+
+        #for _ in range(int.from_bytes(y, byteorder='big')):
+        #    for _ in range(int.from_bytes(x, byteorder='big')):
+         #       for _ in range(8):
+         #           self._uart.write(data)
+        self.print("\x1D/\x00\x10")
+        pass
