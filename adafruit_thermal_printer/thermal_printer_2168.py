@@ -107,3 +107,21 @@ class ThermalPrinter(thermal_printer.ThermalPrinter):
         self._uart.write(b"\x1B*%s%s%s" % (nH, nL, d))
         self.print("\x1D\x2F\x00\x0A")
         pass
+
+    def print_horizontal(self, m, xL, xH, yL, yH):
+        data = bytearray()
+        for _ in range(int.from_bytes(xL, byteorder='big')):
+            for _ in range(int.from_bytes(yL, byteorder='big')):
+                data.append(int("0xFF",16))
+        self._uart.write(b"\x1D\x76\x30%s%s%s%s%s%s" % (m, xL, xH, yL, yH, data))
+        for d in data:
+            self._uart.write(d)
+        pass
+
+    def print_horizontal2(self, m, xL, xH, yL, yH, data):
+        
+        self._uart.write(b"\x1D\x76\x30%s%s%s%s%s%s" % (m, xL, xH, yL, yH, data))
+        for d in data:
+            self._uart.write(d)
+        pass
+

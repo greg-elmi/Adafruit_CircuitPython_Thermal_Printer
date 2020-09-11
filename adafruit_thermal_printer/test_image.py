@@ -29,7 +29,7 @@ def write_to_byte(pos, byte):
     if pos == 7:
         return byte | 0b000000001
 
-uart = serial.Serial("COM5", baudrate=19200, timeout=3000)
+uart = serial.Serial("COM3", baudrate=19200, timeout=3000)
 
 
 
@@ -64,8 +64,8 @@ im = Image.fromarray(bitmap.astype(np.uint8))
 f = np.array(im)
 
 
-plt.imshow(im)
-plt.show()
+#plt.imshow(im)
+#plt.show()
 subs = list()
 
 if f.shape[1] <= 384:
@@ -112,8 +112,14 @@ for x in range(f.shape[1]):
     #printer.print_bitmap(bytes([math.ceil(f.shape[1]/8)]), b"\x01", datas)
     #datas.clear()
 
+data = bytearray()
+for _ in range(int.from_bytes(b"\x30", byteorder='big')):
+    for _ in range(int.from_bytes(b"\x0F", byteorder='big')):
+        data.append(int("0x4a",16))
+#data = b"\x00"
 
-printer.print_bitmap(bytes([math.ceil(f.shape[1]/8)]), bytes([math.ceil(f.shape[0]/8)]), datas)
+printer.print_horizontal2(b"\x00", b"\x30", b"\x00", b"\x0F", b"\x00", data)
+#printer.print_bitmap(bytes([math.ceil(f.shape[1]/8)]), bytes([math.ceil(f.shape[0]/8)]), datas)
 # printer.feed(2)
 # printer.feed(2)
 # img = subs[0]
@@ -128,5 +134,6 @@ printer.print_bitmap(bytes([math.ceil(f.shape[1]/8)]), bytes([math.ceil(f.shape[
 
 
 #printer.print_bitmap(bytes([math.ceil(f.shape[1]/8)]), bytes([math.ceil(f.shape[0]/8)]), datas)
+
 
 
