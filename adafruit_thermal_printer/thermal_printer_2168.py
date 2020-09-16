@@ -39,6 +39,9 @@ package for your firmware printer:
 
 
 import adafruit_thermal_printer.thermal_printer as thermal_printer
+import imageio
+import numpy as np
+from PIL import Image
 
 
 # pylint: disable=too-many-arguments
@@ -94,14 +97,27 @@ class ThermalPrinter(thermal_printer.ThermalPrinter):
         self.reset()
 
 
-    def print_bitmap(self, x, y, data):
-        self._uart.write(b"\x1D*%s%s" % (x, y))
-        for d in data:
-            self._uart.write(d)
-            #self._set_timeout(self._byte_delay_s)
-            #self._wait_timeout()
+    def print_bitmap(self, file):
+        img = imageio.imread(file)
+        if img.shape[2] == 4:
+            r, g, b, a = np.split(img, 4, axis=2)
+        else:
+            r, g, b = np.split(img, 3, axis=2)
+
+        r = r.reshape(-1)
+        g = r.reshape(-1)
+        b = r.reshape(-1)
+
+        bitmap = list(map(lambda x: 0.333*x[0]+0.333*x[1]+0.333*x[2], zip(r, g, b)))
+        bitmap = np.array(bitmap).reshape([img.shape[0], img.shape[1]])
+        bitmap = np.multiply((bitmap > 208).astype(float), 255)
+
+        im = Image.fromarray(bitmap.astype(np.uint8))
+        f = np.array(im)
+
+        #TODO add size assertions and add printing long pictures as many pictures
         
-        self.print("\x1D\x2F\x00")
+        
 
     def fill_vertical(self, m, nH, nL, d):
         self._uart.write(b"\x1B*%s%s%s" % (nH, nL, d))
@@ -125,3 +141,37 @@ class ThermalPrinter(thermal_printer.ThermalPrinter):
             self._uart.write(d)
         pass
 
+    def _write_to_byte(self, pos, byte):
+        if pos == 0:
+            return byte | 0b10000000
+        if pos == 1:
+            return byte | 0b01000000
+        if pos == 2:
+            return byte | 0b00100000
+        if pos == 3:
+            return byte | 0b00010000
+        if pos == 4:
+            return byte | 0b00001000
+        if pos == 5:
+            return byte | 0b00000100
+        if pos == 6:
+            return byte | 0b00000010
+        if pos == 7:
+            return byte | 0b00000001
+
+    def convert_data_horizontally(self, x_size, y_size, file_array):
+        datas = bytearray()
+        for y in range(y_size):
+            for x in range(0, x_size, 8):
+                data = 0
+                for bit in range(8):
+                    try:
+                        if file_array[y][x+bit]==0:
+                            data = self._write_to_byte(bit,data)
+
+                    except IndexError:
+                        pass
+                    finally:
+                        pass
+                datas.append(data)
+        return datas
