@@ -42,6 +42,7 @@ import adafruit_thermal_printer.thermal_printer as thermal_printer
 import imageio
 import numpy as np
 from PIL import Image
+import math
 
 
 # pylint: disable=too-many-arguments
@@ -117,24 +118,28 @@ class ThermalPrinter(thermal_printer.ThermalPrinter):
 
         #TODO add size assertions and add printing long pictures as many pictures
         
-        
+        datas = self._convert_data_horizontally(f.shape[1],f.shape[0],f)
 
-    def fill_vertical(self, m, nH, nL, d):
-        self._uart.write(b"\x1B*%s%s%s" % (nH, nL, d))
-        self.print("\x1D\x2F\x00\x0A")
-        pass
 
-    def print_horizontal(self, m, xL, xH, yL, yH):
-        data = bytearray()
-        for _ in range(int.from_bytes(xL, byteorder='big')):
-            for _ in range(int.from_bytes(yL, byteorder='big')):
-                data.append(int("0xFF",16))
-        self._uart.write(b"\x1D\x76\x30%s%s%s%s%s%s" % (m, xL, xH, yL, yH, data))
-        for d in data:
-            self._uart.write(d)
-        pass
+        ### split into two bytes and prepare to format for printer, x and y sizes of an image
+        img_X = math.ceil(f.shape[1]/8)
+        img_Y = f.shape[0]
+        img_LX = (img_X & 0xFF).to_bytes(1, byteorder="big")
+        img_HX = ((img_X & 0xFF00) >> 8).to_bytes(1, byteorder="big")
+        img_LY = (img_Y & 0xFF).to_bytes(1, byteorder="big")
+        img_HY = ((img_Y & 0xFF00) >> 8).to_bytes(1, byteorder="big")
+        mode = b"\x00"
 
-    def print_horizontal2(self, m, xL, xH, yL, yH, data):
+        self._print_horizontal(mode, img_LX, img_HX, img_LY, img_HY, datas)
+
+    # def fill_vertical(self, m, nH, nL, d):
+    #     self._uart.write(b"\x1B*%s%s%s" % (nH, nL, d))
+    #     self.print("\x1D\x2F\x00\x0A")
+    #     pass
+
+    ### The above don't work
+
+    def _print_horizontal(self, m, xL, xH, yL, yH, data):
         
         self._uart.write(b"\x1D\x76\x30%s%s%s%s%s%s" % (m, xL, xH, yL, yH, data))
         for d in data:
@@ -159,15 +164,15 @@ class ThermalPrinter(thermal_printer.ThermalPrinter):
         if pos == 7:
             return byte | 0b00000001
 
-    def convert_data_horizontally(self, x_size, y_size, file_array):
+    def _convert_data_horizontally(self, x_size, y_size, file_array):
         datas = bytearray()
         for y in range(y_size):
             for x in range(0, x_size, 8):
                 data = 0
                 for bit in range(8):
                     try:
-                        if file_array[y][x+bit]==0:
-                            data = self._write_to_byte(bit,data)
+                        if file_array[y][x+bit] == 0:
+                            data = self._write_to_byte(bit, data)
 
                     except IndexError:
                         pass
@@ -175,3 +180,27 @@ class ThermalPrinter(thermal_printer.ThermalPrinter):
                         pass
                 datas.append(data)
         return datas
+
+    # def convert_data_btm():
+    # datas = bytearray()
+    # for x in range(f.shape[1]):
+    #     for y in range(0, f.shape[0], 8):
+    #         data = 0
+    #         for b in range(8):
+                
+    #             try:
+    #                 if f[y+b][x] == 0:          # Here 0 is our bit on, 255 is bit off
+    #                     data = write_to_byte(b, data) # Here 1 is bit on , 0 bit off
+                        
+    #             except IndexError:
+    #                 pass
+    #             finally:
+    #                 pass
+    #         datas.append(data)  # appending data byte after all bit manipulations
+    #     #printer.print_bitmap(bytes([math.ceil(f.shape[1]/8)]), b"\x01", datas)
+    #     #datas.clear()
+    # return datas
+
+    ### The above was supposed to convert image to bytearray to be send
+    ### to printer in print bitamp command
+    ### Doesnt work and copied from test file, not part of a class

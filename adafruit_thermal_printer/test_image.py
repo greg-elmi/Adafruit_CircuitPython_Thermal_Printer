@@ -69,7 +69,7 @@ im = Image.fromarray(bitmap.astype(np.uint8))
 f = np.array(im)
 
 
-
+### This part supposed to cut the image into parts that printer can accept - Not finished/working
 subs = list()
 
 if f.shape[1] <= 384:
@@ -82,68 +82,44 @@ if f.shape[1] <= 384:
             subs.append(f[(i):(i+8), 0:384])
             i += 8
 
+#######################################################################################################
 
-
-# for img in subs:
-#     for x in range(img.shape[1]):
-#         data = 0
-#         for y in range(img.shape[0]):
-#             if img[y][x] == 0:          # Here 0 is our bit on, 255 is bit off
-#                 data = write_to_byte(y, data) # Here 1 is bit on , 0 bit off
-
-#         datas.append(data)
-#     for x in range(8 - (img.shape[1] % 8)):
-#         data = 0
-#         datas.append(data)
-
-#f = f[(0):(0+8), 0:384]
 print(f.shape, f.dtype)
 
 
-def convert_data_btm():
-    datas = bytearray()
-    for x in range(f.shape[1]):
-        for y in range(0, f.shape[0], 8):
-            data = 0
-            for b in range(8):
-                
-                try:
-                    if f[y+b][x] == 0:          # Here 0 is our bit on, 255 is bit off
-                        data = write_to_byte(b, data) # Here 1 is bit on , 0 bit off
-                        
-                except IndexError:
-                    pass
-                finally:
-                    pass
-            datas.append(data)  # appending data byte after all bit manipulations
-        #printer.print_bitmap(bytes([math.ceil(f.shape[1]/8)]), b"\x01", datas)
-        #datas.clear()
-    return datas
 
+
+#### This part creates arbitrailly long bytearray of chosen hex 
 data = bytearray()
 for _ in range(int.from_bytes(b"\x30", byteorder='big')):
     for _ in range(int.from_bytes(b"\x0F", byteorder='big')):
         data.append(int("0x4a",16))
 #data = b"\x00"
 
+##################################################################
 
-def convert_data_horizontally():
-    datas = bytearray()
-    for y in range(f.shape[0]):
-        for x in range(0, f.shape[1], 8):
-            data = 0
-            for bit in range(8):
-                try:
-                    if f[y][x+bit]==0:
-                        data = write_to_byte(bit,data)
 
-                except IndexError:
-                    pass
-                finally:
-                    pass
-            datas.append(data)
-    return datas
-data_hor = convert_data_horizontally()
+# def convert_data_horizontally():
+#     datas = bytearray()
+#     for y in range(f.shape[0]):
+#         for x in range(0, f.shape[1], 8):
+#             data = 0
+#             for bit in range(8):
+#                 try:
+#                     if f[y][x+bit]==0:
+#                         data = write_to_byte(bit,data)
+
+#                 except IndexError:
+#                     pass
+#                 finally:
+#                     pass
+#             datas.append(data)
+#    return datas
+
+### Above should work from class
+
+datas = printer._convert_data_horizontally(f.shape[1],f.shape[0],f)
+
 
 
 img_X = math.ceil(f.shape[1]/8)
@@ -155,7 +131,7 @@ img_HY = ((img_Y & 0xFF00) >> 8).to_bytes(1, byteorder="big")
 
 mode = b"\x00"
 
-printer.print_horizontal2(mode, img_LX, img_HX, img_LY, img_HY, data_hor)
+printer._print_horizontal(mode, img_LX, img_HX, img_LY, img_HY, datas)
 #printer.print_bitmap(bytes([math.ceil(f.shape[1]/8)]), bytes([math.ceil(f.shape[0]/8)]), datas)
 # printer.feed(2)
 # printer.feed(2)
